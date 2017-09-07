@@ -52,9 +52,9 @@ if __name__ == '__main__':
         * Error_tag: Detail of the found errors for the problematic models. Please refer to lib/ERROR/ERROR.py to see the full list of Error_code and the corresponding Error_tag.
 
     Quick start:
-    python2.7 bin/gff-QC.py -g example_file/annotations2.gff -f example_file/sample.fa -o test
+    python2.7 bin/gff-QC.py -g example_file/example.gff3 -f example_file/reference.fa -o test
     or
-    python2.7 bin/gff-QC.py --gff example_file/annotations2.gff --fasta example_file/sample.fa --output test
+    python2.7 bin/gff-QC.py --gff example_file/example.gff3 --fasta example_file/reference.fa --output test
 
     """))
     parser.add_argument('-g', '--gff', type=str, help='Genome annotation file, gff3 format') 
@@ -82,8 +82,6 @@ if __name__ == '__main__':
         parser.print_help()
         sys.exit(1)
 
-
-
     logger_stderr.info('Reading gff files: (%s)...\n', args.gff)
     gff3 = Gff3(gff_file=args.gff, fasta_external=args.fasta, logger=logger_null)
     logger_stderr.info('Checking errors in the gff files: (%s)...\n', args.gff)
@@ -97,17 +95,25 @@ if __name__ == '__main__':
     function4gff.FIX_MISSING_ATTR(gff3, logger=logger_stderr)
 
     error_set = list()
-    if function4gff.extract_internal_detected_errors(gff3):
-        error_set.extend(function4gff.extract_internal_detected_errors(gff3))
+    cmd = None
+    cmd = function4gff.extract_internal_detected_errors(gff3)
+    if cmd:
+        error_set.extend(cmd)
+    cmd = None
     logger_stderr.info('\t- Checking intra-model errors: (%s)...\n', args.gff)
-    if intra_model.main(gff3, logger=logger_stderr):
-        error_set.extend(intra_model.main(gff3, logger=logger_stderr))
+    cmd = intra_model.main(gff3, logger=logger_stderr)
+    if cmd:
+        error_set.extend(cmd)
+    cmd = None
     logger_stderr.info('\t- Checking inter-model errors: (%s)...\n', args.gff)
-    if inter_model.main(gff3, logger=logger_stderr):
-        error_set.extend(inter_model.main(gff3, logger=logger_stderr))
+    cmd = inter_model.main(gff3, args.gff, args.fasta, logger=logger_stderr)
+    if cmd:
+        error_set.extend(cmd)
+    cmd = None
     logger_stderr.info('\t- Checking single-feature errors: (%s)...\n', args.gff)
-    if single_feature.main(gff3, logger=logger_stderr):
-        error_set.extend(single_feature.main(gff3, logger=logger_stderr))
+    cmd = single_feature.main(gff3, logger=logger_stderr)
+    if cmd:
+        error_set.extend(cmd)
 
     if args.output:
         logger_stderr.info('Print QC report at {0:s}'.format(args.output))
@@ -120,6 +126,6 @@ if __name__ == '__main__':
     ERROR_INFO = ERROR.INFO
 
     report_fh.write('Line_num\tError_code\tError_tag\n')
-    for e in error_set:
+    for e in sorted(error_set):
         tag = '[{0:s}]'.format(e['eTag'])
         report_fh.write('{0:s}\t{1:s}\t{2:s}\n'.format(str(e['line_num']), str(e['eCode']), str(tag)))
